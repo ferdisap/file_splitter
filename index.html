@@ -636,7 +636,7 @@
     const baseNames = new Set();
 
     files.forEach(f => {
-      const match = f.name.match(/^(.+)\.part(\d+)$/i);
+      const match = f.name.match(/^(.+)\.part(\d+)(.+)?$/i);
       if (match) {
         parsed.push({
           file: f,
