@@ -70,6 +70,7 @@
   .tab-content.active { display: block; }
 
   .upload-area {
+    display: block;
     border: 3px dashed #cbd5e0;
     border-radius: 12px;
     padding: 40px 20px;
@@ -295,11 +296,11 @@
 
   <!-- =================== SPLIT TAB =================== -->
   <div class="tab-content active" id="tab-split">
-    <div for="fileInput" class="upload-area" id="uploadArea">
+    <label for="fileInput" class="upload-area" id="uploadArea">
       <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
       <p><strong>Klik untuk pilih file</strong> atau seret & lepas di sini</p>
       <p class="hint">Mendukung semua jenis file (ZIP, ISO, video, dll)</p>
-    </div>
+    </label>
     <input type="file" id="fileInput">
 
     <div class="file-info" id="fileInfo">
@@ -353,11 +354,11 @@
 
   <!-- =================== MERGE TAB =================== -->
   <div class="tab-content" id="tab-merge">
-    <div for="mergeInput" class="upload-area" id="mergeArea">
+    <label for="mergeInput" class="upload-area" id="mergeArea">
       <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
       <p><strong>Klik untuk pilih semua chunk</strong> atau seret & lepas</p>
       <p class="hint">Pilih semua file .part001, .part002, ... sekaligus</p>
-    </div>
+    </label>
     <input type="file" id="mergeInput" multiple>
 
     <div id="mergeAlert" class="alert"></div>
