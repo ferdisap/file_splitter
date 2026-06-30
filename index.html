@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>File Splitter & Merger - Offline</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 20px;
+    color: #333;
+  }
+  .container {
+    max-width: 800px;
+    margin: 0 auto;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    padding: 30px;
+  }
+  h1 {
+    text-align: center;
+    color: #4a5568;
+    margin-bottom: 8px;
+    font-size: 28px;
+  }
+  .subtitle {
+    text-align: center;
+    color: #718096;
+    margin-bottom: 25px;
+    font-size: 14px;
+  }
+
+  /* Tab Navigation */
+  .tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 25px;
+    background: #f7fafc;
+    padding: 6px;
+    border-radius: 12px;
+  }
+  .tab {
+    flex: 1;
+    padding: 12px;
+    text-align: center;
+    border: none;
+    background: transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 600;
+    color: #718096;
+    transition: all 0.3s;
+  }
+  .tab.active {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    box-shadow: 0 4px 12px rgba(102,126,234,0.4);
+  }
+  .tab:hover:not(.active) {
+    background: #edf2f7;
+    color: #4a5568;
+  }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  .upload-area {
+    border: 3px dashed #cbd5e0;
+    border-radius: 12px;
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    background: #f7fafc;
+  }
+  .upload-area:hover, .upload-area.dragover {
+    border-color: #667eea;
+    background: #edf2ff;
+  }
+  .upload-area svg {
+    width: 60px;
+    height: 60px;
+    fill: #667eea;
+    margin-bottom: 10px;
+  }
+  .upload-area p { color: #4a5568; margin: 5px 0; }
+  .upload-area .hint { color: #a0aec0; font-size: 13px; }
+  #fileInput, #mergeInput { display: none; }
+
+  .settings {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin: 20px 0;
+  }
+  .setting-item label {
+    display: block;
+    font-weight: 600;
+    color: #4a5568;
+    margin-bottom: 6px;
+    font-size: 14px;
+  }
+  .setting-item input, .setting-item select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: border 0.2s;
+  }
+  .setting-item input:focus, .setting-item select:focus {
+    outline: none;
+    border-color: #667eea;
+  }
+
+  .btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    width: 100%;
+    justify-content: center;
+  }
+  .btn-primary:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(102,126,234,0.4);
+  }
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .btn-success {
+    background: #48bb78;
+    color: white;
+  }
+  .btn-success:hover:not(:disabled) { background: #38a169; }
+  .btn-success:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-sm {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+
+  .progress-container {
+    margin: 20px 0;
+    display: none;
+  }
+  .progress-container.show { display: block; }
+  .progress-label {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    font-size: 13px;
+    color: #4a5568;
+  }
+  .progress-bar {
+    width: 100%;
+    height: 12px;
+    background: #e2e8f0;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    width: 0%;
+    transition: width 0.3s;
+  }
+
+  .file-info {
+    background: #f7fafc;
+    border-radius: 8px;
+    padding: 15px;
+    margin: 15px 0;
+    display: none;
+  }
+  .file-info.show { display: block; }
+  .file-info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    font-size: 14px;
+  }
+  .file-info-row span:first-child { color: #718096; }
+  .file-info-row span:last-child { font-weight: 600; color: #2d3748; word-break: break-all; text-align: right; max-width: 60%; }
+
+  .chunks-list {
+    margin-top: 20px;
+    display: none;
+  }
+  .chunks-list.show { display: block; }
+  .chunks-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .chunks-header h3 { color: #2d3748; font-size: 18px; }
+  .chunk-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    background: #f7fafc;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    border-left: 4px solid #667eea;
+    transition: all 0.2s;
+  }
+  .chunk-item:hover {
+    background: #edf2ff;
+    transform: translateX(4px);
+  }
+  .chunk-info { flex: 1; min-width: 0; }
+  .chunk-name { font-weight: 600; color: #2d3748; font-size: 14px; word-break: break-all; }
+  .chunk-size { color: #718096; font-size: 12px; margin-top: 2px; }
+
+  .alert {
+    padding: 12px 15px;
+    border-radius: 8px;
+    margin: 15px 0;
+    font-size: 14px;
+    display: none;
+  }
+  .alert.show { display: block; }
+  .alert-warning {
+    background: #fffaf0;
+    border-left: 4px solid #ed8936;
+    color: #744210;
+  }
+  .alert-error {
+    background: #fff5f5;
+    border-left: 4px solid #f56565;
+    color: #742a2a;
+  }
+  .alert-success {
+    background: #f0fff4;
+    border-left: 4px solid #48bb78;
+    color: #22543d;
+  }
+  .alert strong { display: block; margin-bottom: 4px; }
+  .alert ul { margin: 6px 0 0 18px; font-size: 13px; }
+
+  .note {
+    background: #f7fafc;
+    border-left: 4px solid #4299e1;
+    padding: 12px 15px;
+    border-radius: 6px;
+    margin-top: 20px;
+    font-size: 13px;
+    color: #2c5282;
+  }
+  .note strong { color: #2b6cb0; }
+  .note code {
+    background: #edf2f7;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Consolas', monospace;
+    font-size: 12px;
+  }
+
+  @media (max-width: 600px) {
+    .settings { grid-template-columns: 1fr; }
+    .container { padding: 20px; }
+    h1 { font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>✂️🔗 File Splitter & Merger</h1>
+  <p class="subtitle">Pecah & gabungkan file besar — 100% offline di browser</p>
+
+  <!-- Tab Navigation -->
+  <div class="tabs">
+    <button class="tab active" data-tab="split">✂️ Split File</button>
+    <button class="tab" data-tab="merge">🔗 Merge File</button>
+  </div>
+
+  <!-- =================== SPLIT TAB =================== -->
+  <div class="tab-content active" id="tab-split">
+    <label for="fileInput" class="upload-area" id="uploadArea">
+      <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+      <p><strong>Klik untuk pilih file</strong> atau seret & lepas di sini</p>
+      <p class="hint">Mendukung semua jenis file (ZIP, ISO, video, dll)</p>
+    </label>
+    <input type="file" id="fileInput">
+
+    <div class="file-info" id="fileInfo">
+      <div class="file-info-row"><span>Nama File:</span><span id="infoName">-</span></div>
+      <div class="file-info-row"><span>Ukuran:</span><span id="infoSize">-</span></div>
+      <div class="file-info-row"><span>Tipe:</span><span id="infoType">-</span></div>
+    </div>
+
+    <div class="settings">
+      <div class="setting-item">
+        <label>Ukuran per Chunk</label>
+        <input type="number" id="chunkSize" value="10" min="1" max="1000">
+      </div>
+      <div class="setting-item">
+        <label>Satuan</label>
+        <select id="chunkUnit">
+          <option value="1">MB (Megabyte)</option>
+          <option value="0.1">100 KB</option>
+          <option value="1024">GB (Gigabyte)</option>
+        </select>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" id="splitBtn" disabled>
+      🔪 Pecah File Sekarang
+    </button>
+
+    <div class="progress-container" id="splitProgress">
+      <div class="progress-label">
+        <span id="splitProgressText">Memproses...</span>
+        <span id="splitProgressPercent">0%</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="splitProgressFill"></div>
+      </div>
+    </div>
+
+    <div class="chunks-list" id="chunksList">
+      <div class="chunks-header">
+        <h3>📦 Chunk Hasil Pecahan</h3>
+        <button class="btn btn-success btn-sm" id="downloadAllBtn">⬇️ Download Semua</button>
+      </div>
+      <div id="chunksContainer"></div>
+    </div>
+
+    <div class="note">
+      <strong>💡 Tips:</strong> Chunk diberi nama <code>namafile.ext.part001</code>, <code>.part002</code>, dst.
+      Gunakan tab <strong>Merge</strong> untuk menggabungkannya kembali kapan saja.
+    </div>
+  </div>
+
+  <!-- =================== MERGE TAB =================== -->
+  <div class="tab-content" id="tab-merge">
+    <label for="mergeInput" class="upload-area" id="mergeArea">
+      <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+      <p><strong>Klik untuk pilih semua chunk</strong> atau seret & lepas</p>
+      <p class="hint">Pilih semua file .part001, .part002, ... sekaligus</p>
+    </label>
+    <input type="file" id="mergeInput" multiple>
+
+    <div id="mergeAlert" class="alert"></div>
+
+    <div class="file-info" id="mergeInfo">
+      <div class="file-info-row"><span>Nama File Asli:</span><span id="mergeBaseName">-</span></div>
+      <div class="file-info-row"><span>Jumlah Chunk:</span><span id="mergeChunkCount">-</span></div>
+      <div class="file-info-row"><span>Total Ukuran:</span><span id="mergeTotalSize">-</span></div>
+      <div class="file-info-row"><span>Urutan:</span><span id="mergeOrder">-</span></div>
+    </div>
+
+    <button class="btn btn-primary" id="mergeBtn" disabled>
+      🔗 Gabungkan & Download
+    </button>
+
+    <div class="progress-container" id="mergeProgress">
+      <div class="progress-label">
+        <span id="mergeProgressText">Menggabungkan...</span>
+        <span id="mergeProgressPercent">0%</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="mergeProgressFill"></div>
+      </div>
+    </div>
+
+    <div class="note">
+      <strong>💡 Cara Kerja:</strong>
+      <ul style="margin: 8px 0 0 18px;">
+        <li>Sistem otomatis mendeteksi nama file asli dari pola <code>.partXXX</code></li>
+        <li>Chunk diurutkan berdasarkan nomor (bukan alfabet)</li>
+        <li>Validasi kelengkapan chunk — akan diperingatkan jika ada yang hilang</li>
+        <li>Hasil gabungan langsung didownload sebagai file asli</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+  // =================== UTILITIES ===================
+  function formatSize(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return (bytes / Math.pow(k, i)).toFixed(2) + ' ' + sizes[i];
+  }
+
+  function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  }
+
+  function showAlert(type, title, message, list = null) {
+    const alert = document.getElementById('mergeAlert');
+    alert.className = `alert alert-${type} show`;
+    let html = `<strong>${title}</strong>${message}`;
+    if (list && list.length > 0) {
+      html += '<ul>' + list.map(i => `<li>${i}</li>`).join('') + '</ul>';
+    }
+    alert.innerHTML = html;
+  }
+
+  function hideAlert() {
+    document.getElementById('mergeAlert').classList.remove('show');
+  }
+
+  // =================== TAB SWITCHING ===================
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+    });
+  });
+
+  // =================== SPLIT FUNCTIONALITY ===================
+  const fileInput = document.getElementById('fileInput');
+  const uploadArea = document.getElementById('uploadArea');
+  const splitBtn = document.getElementById('splitBtn');
+  const fileInfo = document.getElementById('fileInfo');
+  const splitProgress = document.getElementById('splitProgress');
+  const splitProgressFill = document.getElementById('splitProgressFill');
+  const splitProgressText = document.getElementById('splitProgressText');
+  const splitProgressPercent = document.getElementById('splitProgressPercent');
+  const chunksList = document.getElementById('chunksList');
+  const chunksContainer = document.getElementById('chunksContainer');
+  const downloadAllBtn = document.getElementById('downloadAllBtn');
+  const chunkSizeInput = document.getElementById('chunkSize');
+  const chunkUnitInput = document.getElementById('chunkUnit');
+
+  let selectedFile = null;
+  let chunks = [];
+
+  fileInput.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) handleFile(e.target.files[0]);
+  });
+
+  ['dragover', 'dragenter'].forEach(evt => {
+    uploadArea.addEventListener(evt, (e) => {
+      e.preventDefault();
+      uploadArea.classList.add('dragover');
+    });
+  });
+  ['dragleave', 'drop'].forEach(evt => {
+    uploadArea.addEventListener(evt, (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('dragover');
+    });
+  });
+  uploadArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
+  });
+
+  function handleFile(file) {
+    selectedFile = file;
+    document.getElementById('infoName').textContent = file.name;
+    document.getElementById('infoSize').textContent = formatSize(file.size);
+    document.getElementById('infoType').textContent = file.type || 'Tidak diketahui';
+    fileInfo.classList.add('show');
+    splitBtn.disabled = false;
+    chunks = [];
+    chunksContainer.innerHTML = '';
+    chunksList.classList.remove('show');
+    splitProgress.classList.remove('show');
+  }
+
+  splitBtn.addEventListener('click', async () => {
+    if (!selectedFile) return;
+
+    const sizeMB = parseFloat(chunkSizeInput.value);
+    const unitMB = parseFloat(chunkUnitInput.value);
+    const chunkSizeBytes = Math.floor(sizeMB * unitMB * 1024 * 1024);
+
+    if (chunkSizeBytes <= 0 || chunkSizeBytes > selectedFile.size) {
+      alert('Ukuran chunk tidak valid! Harus lebih kecil dari ukuran file.');
+      return;
+    }
+
+    chunks = [];
+    chunksContainer.innerHTML = '';
+    splitProgress.classList.add('show');
+    splitProgressFill.style.width = '0%';
+    splitBtn.disabled = true;
+
+    const totalChunks = Math.ceil(selectedFile.size / chunkSizeBytes);
+    const padLength = String(totalChunks).length;
+
+    let offset = 0;
+    let partNum = 1;
+
+    while (offset < selectedFile.size) {
+      const end = Math.min(offset + chunkSizeBytes, selectedFile.size);
+      const chunkBlob = selectedFile.slice(offset, end);
+      const chunkName = `${selectedFile.name}.part${String(partNum).padStart(padLength, '0')}`;
+
+      chunks.push({
+        blob: chunkBlob,
+        name: chunkName,
+        size: chunkBlob.size
+      });
+
+      const progress = (partNum / totalChunks) * 100;
+      splitProgressFill.style.width = progress + '%';
+      splitProgressPercent.textContent = progress.toFixed(1) + '%';
+      splitProgressText.textContent = `Membuat chunk ${partNum} dari ${totalChunks}...`;
+
+      await new Promise(r => setTimeout(r, 10));
+
+      offset = end;
+      partNum++;
+    }
+
+    splitProgressText.textContent = `✅ Selesai! ${totalChunks} chunk berhasil dibuat`;
+    splitProgressFill.style.width = '100%';
+    splitProgressPercent.textContent = '100%';
+
+    renderChunks();
+    splitBtn.disabled = false;
+  });
+
+  function renderChunks() {
+    chunksContainer.innerHTML = '';
+    chunks.forEach((chunk, idx) => {
+      const item = document.createElement('div');
+      item.className = 'chunk-item';
+      item.innerHTML = `
+        <div class="chunk-info">
+          <div class="chunk-name">📄 ${chunk.name}</div>
+          <div class="chunk-size">${formatSize(chunk.size)}</div>
+        </div>
+        <button class="btn btn-success btn-sm" data-idx="${idx}">⬇️ Download</button>
+      `;
+      item.querySelector('button').addEventListener('click', () => {
+        downloadBlob(chunk.blob, chunk.name);
+      });
+      chunksContainer.appendChild(item);
+    });
+    chunksList.classList.add('show');
+  }
+
+  downloadAllBtn.addEventListener('click', async () => {
+    if (chunks.length === 0) return;
+    downloadAllBtn.disabled = true;
+    downloadAllBtn.textContent = `⏳ Mendownload... (0/${chunks.length})`;
+
+    for (let i = 0; i < chunks.length; i++) {
+      downloadBlob(chunks[i].blob, chunks[i].name);
+      downloadAllBtn.textContent = `⏳ Mendownload... (${i + 1}/${chunks.length})`;
+      await new Promise(r => setTimeout(r, 600));
+    }
+
+    downloadAllBtn.disabled = false;
+    downloadAllBtn.textContent = '⬇️ Download Semua';
+  });
+
+  // =================== MERGE FUNCTIONALITY ===================
+  const mergeInput = document.getElementById('mergeInput');
+  const mergeArea = document.getElementById('mergeArea');
+  const mergeBtn = document.getElementById('mergeBtn');
+  const mergeInfo = document.getElementById('mergeInfo');
+  const mergeProgress = document.getElementById('mergeProgress');
+  const mergeProgressFill = document.getElementById('mergeProgressFill');
+  const mergeProgressText = document.getElementById('mergeProgressText');
+  const mergeProgressPercent = document.getElementById('mergeProgressPercent');
+
+  let mergeFiles = [];
+  let mergeBaseName = '';
+
+  ['dragover', 'dragenter'].forEach(evt => {
+    mergeArea.addEventListener(evt, (e) => {
+      e.preventDefault();
+      mergeArea.classList.add('dragover');
+    });
+  });
+  ['dragleave', 'drop'].forEach(evt => {
+    mergeArea.addEventListener(evt, (e) => {
+      e.preventDefault();
+      mergeArea.classList.remove('dragover');
+    });
+  });
+  mergeArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    if (e.dataTransfer.files.length > 0) handleMergeFiles(e.dataTransfer.files);
+  });
+
+  mergeInput.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) handleMergeFiles(e.target.files);
+  });
+
+  function handleMergeFiles(fileList) {
+    hideAlert();
+    mergeInfo.classList.remove('show');
+    mergeBtn.disabled = true;
+    mergeFiles = [];
+
+    // Konversi FileList ke array
+    const files = Array.from(fileList);
+
+    if (files.length < 2) {
+      showAlert('error', '❌ File tidak cukup', 'Pilih minimal 2 file chunk untuk digabungkan.');
+      return;
+    }
+
+    // Ekstrak base name dan nomor part dari setiap file
+    const parsed = [];
+    const invalidFiles = [];
+    const baseNames = new Set();
+
+    files.forEach(f => {
+      const match = f.name.match(/^(.+)\.part(\d+)$/i);
+      if (match) {
+        parsed.push({
+          file: f,
+          baseName: match[1],
+          partNum: parseInt(match[2], 10),
+          rawName: f.name
+        });
+        baseNames.add(match[1]);
+      } else {
+        invalidFiles.push(f.name);
+      }
+    });
+
+    // Validasi: semua chunk harus dari file yang sama
+    if (baseNames.size > 1) {
+      showAlert('error', '❌ Chunk tidak konsisten',
+        'File yang dipilih berasal dari sumber yang berbeda:',
+        Array.from(baseNames));
+      return;
+    }
+
+    if (parsed.length === 0) {
+      showAlert('error', '❌ Format tidak dikenali',
+        'Tidak ada file yang sesuai pola <code>namafile.partXXX</code>');
+      return;
+    }
+
+    if (invalidFiles.length > 0) {
+      showAlert('warning', '⚠️ Ada file yang diabaikan',
+        'File berikut tidak sesuai pola dan akan diabaikan:',
+        invalidFiles);
+    }
+
+    // Urutkan berdasarkan nomor part (numeric, bukan string)
+    parsed.sort((a, b) => a.partNum - b.partNum);
+
+    // Deteksi chunk yang hilang atau duplikat
+    const partNums = parsed.map(p => p.partNum);
+    const minPart = Math.min(...partNums);
+    const maxPart = Math.max(...partNums);
+    const missing = [];
+    const duplicates = [];
+    const seen = new Set();
+
+    for (let i = minPart; i <= maxPart; i++) {
+      const count = partNums.filter(n => n === i).length;
+      if (count === 0) missing.push(i);
+      else if (count > 1) duplicates.push(i);
+    }
+
+    if (missing.length > 0 || duplicates.length > 0) {
+      let msg = '';
+      const list = [];
+      if (missing.length > 0) {
+        msg += `Ada <strong>${missing.length} chunk hilang</strong>. `;
+        list.push(`Chunk hilang: ${missing.join(', ')}`);
+      }
+      if (duplicates.length > 0) {
+        msg += `Ada <strong>${duplicates.length} chunk duplikat</strong>. `;
+        list.push(`Chunk duplikat: ${duplicates.join(', ')}`);
+      }
+      msg += 'File hasil gabungan mungkin rusak!';
+      showAlert('warning', '⚠️ Chunk tidak lengkap', msg, list);
+    }
+
+    // Simpan data
+    mergeFiles = parsed;
+    mergeBaseName = parsed[0].baseName;
+
+    const totalSize = parsed.reduce((sum, p) => sum + p.file.size, 0);
+    const orderStr = parsed.map(p => p.partNum).join(' → ');
+
+    document.getElementById('mergeBaseName').textContent = mergeBaseName;
+    document.getElementById('mergeChunkCount').textContent = `${parsed.length} chunk`;
+    document.getElementById('mergeTotalSize').textContent = formatSize(totalSize);
+    document.getElementById('mergeOrder').textContent = orderStr.length > 50
+      ? `${parsed[0].partNum} → ... → ${parsed[parsed.length-1].partNum}`
+      : orderStr;
+
+    mergeInfo.classList.add('show');
+    mergeBtn.disabled = missing.length > 0; // Disable jika ada chunk hilang
+  }
+
+  mergeBtn.addEventListener('click', async () => {
+    if (mergeFiles.length === 0) return;
+
+    mergeProgress.classList.add('show');
+    mergeProgressFill.style.width = '0%';
+    mergeBtn.disabled = true;
+
+    // Gabungkan semua blob
+    const blobs = [];
+    for (let i = 0; i < mergeFiles.length; i++) {
+      const p = mergeFiles[i];
+      blobs.push(p.file);
+
+      const progress = ((i + 1) / mergeFiles.length) * 100;
+      mergeProgressFill.style.width = progress + '%';
+      mergeProgressPercent.textContent = progress.toFixed(1) + '%';
+      mergeProgressText.textContent = `Menggabungkan chunk ${i + 1} dari ${mergeFiles.length}...`;
+
+      // Beri jeda agar UI responsif
+      await new Promise(r => setTimeout(r, 10));
+    }
+
+    mergeProgressText.textContent = '📦 Membuat file final...';
+    await new Promise(r => setTimeout(r, 50));
+
+    // Buat Blob gabungan
+    const finalBlob = new Blob(blobs, { type: 'application/octet-stream' });
+
+    mergeProgressFill.style.width = '100%';
+    mergeProgressPercent.textContent = '100%';
+    mergeProgressText.textContent = `✅ Selesai! File: ${mergeBaseName}`;
+
+    // Download
+    downloadBlob(finalBlob, mergeBaseName);
+
+    mergeBtn.disabled = false;
+  });
+</script>
+</body>
+</html>
